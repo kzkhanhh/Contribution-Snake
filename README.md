@@ -51,5 +51,5 @@ Bạn sẽ điều khiển con rắn để ăn các "commits" màu xanh lá, tă
 
 1. Clone repo về máy:
    ```bash
-   git clone [https://github.com/your-username/contribution-snake.git](https://github.com/kzkhanhh/Contribution-Snake.git)
+   git clone https://github.com/kzkhanhh/Contribution-Snake.git 
    cd contribution-snake
