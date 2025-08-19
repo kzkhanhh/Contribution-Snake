@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contribution Snake - Eating My Way Through GitHub</title>
+
+</head>
+<body>
+    <div class="header">
+        <h1>🐍 Contribution Snake</h1>
+        <p>Eating My Way Through GitHub</p>
+    </div>
+
+    <div class="game-container">
+        <div class="game-info">
+            <div class="score-board">
+                <div class="score-item">
+                    <div class="icon">⭐</div>
+                    <div class="label">Score:</div>
+                    <div class="value" id="score">0</div>
+                </div>
+                <div class="score-item">
+                    <div class="icon">🔥</div>
+                    <div class="label">Commits:</div>
+                    <div class="value" id="commits">0</div>
+                </div>
+                <div class="score-item">
+                    <div class="icon">📊</div>
+                    <div class="label">Streak:</div>
+                    <div class="value" id="streak">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div style="position: relative;">
+            <canvas id="gameCanvas" class="game-canvas" width="600" height="400"></canvas>
+            
+            <div class="contribution-grid" id="contributionGrid">
+                <!-- GitHub contribution squares will be generated here -->
+            </div>
+
+            <div class="github-stats">
+                <div>Speed: <span id="speed">150ms</span></div>
+                <div>Level: <span id="level">1</span></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="control-btn" onclick="startGame()">🚀 Start Game</button>
+            <button class="control-btn" onclick="pauseGame()">⏸️ Pause</button>
+            <button class="control-btn" onclick="resetGame()">🔄 Reset</button>
+        </div>
+
+        <div class="instructions">
+            <h3>🎮 How to Play</h3>
+            <p>• Use arrow keys or WASD to control the snake</p>
+            <p>• Eat green commits (🟢) to grow and increase your contribution streak</p>
+            <p>• Avoid hitting walls or yourself</p>
+            <p>• The more you eat, the faster you code! 💻</p>
+        </div>
+    </div>
+
+    <div class="game-over" id="gameOver">
+        <div class="game-over-content">
+            <h2>💥 Repository Crashed!</h2>
+            <p style="font-size: 1.5em; color: #39d353; margin: 20px 0;">
+                Final Stats: <span id="finalScore">0</span> commits pushed!
+            </p>
+            <p style="color: #8b949e;">Your contribution streak has ended. Time to debug and try again!</p>
+            <button class="control-btn" onclick="restartGame()" style="margin-top: 20px;">
+                🔄 Push New Code
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameOverDiv = document.getElementById('gameOver');
+
+        // Game state
+        let gameRunning = false;
+        let gamePaused = false;
+        let gameSpeed = 150;
+        let score = 0;
+        let commits = 0;
+        let streak = 0;
+        let level = 1;
+
+        // Game objects
+        let snake = [
+            { x: 300, y: 200 }
+        ];
+        let direction = { x: 0, y: 0 };
+        let food = { x: 0, y: 0 };
+
+        // Grid settings
+        const gridSize = 20;
+        const tileCount = {
+            x: canvas.width / gridSize,
+            y: canvas.height / gridSize
+        };
+
+        // Initialize contribution grid
+        function initContributionGrid() {
+            const grid = document.getElementById('contributionGrid');
+            grid.innerHTML = '';
+            for (let i = 0; i < 49; i++) { // 7x7 grid
+                const square = document.createElement('div');
+                square.className = 'contribution-square';
+                grid.appendChild(square);
+            }
+        }
+
+        // Update contribution grid based on score
+        function updateContributionGrid() {
+            const squares = document.querySelectorAll('.contribution-square');
+            const activeCount = Math.min(Math.floor(score / 50), 49);
+            
+            squares.forEach((square, index) => {
+                if (index < activeCount) {
+                    square.classList.add('active');
+                } else {
+                    square.classList.remove('active');
+                }
+            });
+        }
+
+        // Generate random food position
+        function generateFood() {
+            food = {
+                x: Math.floor(Math.random() * tileCount.x) * gridSize,
+                y: Math.floor(Math.random() * tileCount.y) * gridSize
+            };
+
+            // Make sure food doesn't spawn on snake
+            for (let segment of snake) {
+                if (segment.x === food.x && segment.y === food.y) {
+                    generateFood();
+                    return;
+                }
+            }
+        }
+
+        // Draw game objects
+        function draw() {
+            // Clear canvas with GitHub dark theme
+            ctx.fillStyle = '#0d1117';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw snake with GitHub green gradient
+            snake.forEach((segment, index) => {
+                if (index === 0) {
+                    // Snake head
+                    ctx.fillStyle = '#39d353';
+                    ctx.shadowColor = '#39d353';
+                    ctx.shadowBlur = 10;
+                } else {
+                    // Snake body
+                    ctx.fillStyle = `hsl(120, 73%, ${65 - index * 2}%)`;
+                    ctx.shadowBlur = 5;
+                }
+                
+                ctx.fillRect(segment.x + 2, segment.y + 2, gridSize - 4, gridSize - 4);
+                ctx.shadowBlur = 0;
+            });
+
+            // Draw food as a commit
+            ctx.fillStyle = '#2ea043';
+            ctx.shadowColor = '#2ea043';
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.arc(food.x + gridSize/2, food.y + gridSize/2, gridSize/2 - 2, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Draw commit symbol on food
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '12px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('●', food.x + gridSize/2, food.y + gridSize/2 + 4);
+        }
+
+        // Update game logic
+        function update() {
+            if (!gameRunning || gamePaused) return;
+
+            // Move snake head
+            const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
+
+            // Check wall collision
+            if (head.x < 0 || head.x >= canvas.width || head.y < 0 || head.y >= canvas.height) {
+                gameOver();
+                return;
+            }
+
+            // Check self collision
+            for (let segment of snake) {
+                if (head.x === segment.x && head.y === segment.y) {
+                    gameOver();
+                    return;
+                }
+            }
+
+            snake.unshift(head);
+
+            // Check food collision
+            if (head.x === food.x && head.y === food.y) {
+                score += 100;
+                commits++;
+                streak++;
+                
+                // Increase difficulty
+                if (commits % 5 === 0) {
+                    level++;
+                    gameSpeed = Math.max(50, gameSpeed - 10);
+                }
+
+                generateFood();
+                updateUI();
+                updateContributionGrid();
+            } else {
+                snake.pop();
+            }
+        }
+
+        // Update UI elements
+        function updateUI() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('commits').textContent = commits;
+            document.getElementById('streak').textContent = streak;
+            document.getElementById('level').textContent = level;
+            document.getElementById('speed').textContent = gameSpeed + 'ms';
+        }
+
+        // Game over
+        function gameOver() {
+            gameRunning = false;
+            document.getElementById('finalScore').textContent = commits;
+            gameOverDiv.style.display = 'flex';
+        }
+
+        // Game loop
+        function gameLoop() {
+            update();
+            draw();
+            
+            if (gameRunning) {
+                setTimeout(gameLoop, gameSpeed);
+            }
+        }
+
+        // Control functions
+        function startGame() {
+            if (!gameRunning && !gamePaused) {
+                gameRunning = true;
+                direction = { x: gridSize, y: 0 };
+                generateFood();
+                gameLoop();
+            } else if (gamePaused) {
+                gamePaused = false;
+                gameLoop();
+            }
+        }
+
+        function pauseGame() {
+            gamePaused = !gamePaused;
+            if (!gamePaused && gameRunning) {
+                gameLoop();
+            }
+        }
+
+        function resetGame() {
+            gameRunning = false;
+            gamePaused = false;
+            score = 0;
+            commits = 0;
+            streak = 0;
+            level = 1;
+            gameSpeed = 150;
+            snake = [{ x: 300, y: 200 }];
+            direction = { x: 0, y: 0 };
+            gameOverDiv.style.display = 'none';
+            updateUI();
+            updateContributionGrid();
+            draw();
+        }
+
+        function restartGame() {
+            resetGame();
+            startGame();
+        }
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning) return;
+
+            switch (e.key.toLowerCase()) {
+                case 'arrowup':
+                case 'w':
+                    if (direction.y === 0) direction = { x: 0, y: -gridSize };
+                    break;
+                case 'arrowdown':
+                case 's':
+                    if (direction.y === 0) direction = { x: 0, y: gridSize };
+                    break;
+                case 'arrowleft':
+                case 'a':
+                    if (direction.x === 0) direction = { x: -gridSize, y: 0 };
+                    break;
+                case 'arrowright':
+                case 'd':
+                    if (direction.x === 0) direction = { x: gridSize, y: 0 };
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    pauseGame();
+                    break;
+            }
+        });
+
+        // Initialize game
+        initContributionGrid();
+        generateFood();
+        updateUI();
+        draw();
+    </script>
+</body>
+</html>
